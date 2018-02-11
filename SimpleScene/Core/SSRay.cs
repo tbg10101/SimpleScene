@@ -1,39 +1,28 @@
 ﻿// Copyright(C) David W. Jeske, 2013
-// Released to the public domain. 
+// Released to the public domain.
+// Converted to Unity 64-bit by Tristan Bellman-Greenwood
 
-using System;
+using UnityEngine;
 
-using OpenTK;
+namespace SimpleScene {
+	public struct SSRay {
+		public Vector3d Position;
+		public Vector3d Direction;
 
-namespace SimpleScene
-{
-	public struct SSRay
-	{
-	    public Vector3 pos;
-	    public Vector3 dir;
-
-		public SSRay (Vector3 pos, Vector3 dir) {
-			this.pos = pos;
-			this.dir = dir;
+		public SSRay (Vector3d position, Vector3d direction) {
+			Position = position;
+			Direction = direction;
 		}
 
-		public static SSRay FromTwoPoints(Vector3 p1, Vector3 p2) {
-		    
-		    Vector3 pos = p1;
-		    Vector3 dir = (p2 - p1).Normalized();
+		public static SSRay FromTwoPoints (Vector3d p1, Vector3d p2) {
+			Vector3d pos = p1;
+			Vector3d dir = (p2 - p1).normalized;
 
-		    return new SSRay(pos,dir);
+			return new SSRay(pos, dir);
 		}
 
-		public SSRay Transformed(Matrix4 mat) {
-		    // a point is directly transformed
-		    // however, a ray is only rotationally transformed.
-			return new SSRay( Vector3.Transform(pos, mat) , Vector3.Transform(dir,mat.ExtractRotation()).Normalized() );
-		}
-
-		public override string ToString() {
-		    return String.Format("({0}) -> v({1})",pos,dir);
+		public override string ToString () {
+			return string.Format("{0} -> v{1}", Position, Direction);
 		}
 	}
 }
-

@@ -1,50 +1,36 @@
-﻿using System;
-using OpenTK;
+﻿// Converted to Unity 64-bit by Tristan Bellman-Greenwood
 
-namespace SimpleScene
-{
-	public struct SSSphere : IEquatable<SSSphere>
-	{
-		public Vector3 center;
-		public float radius;
+using System;
+using UnityEngine;
 
-		public SSSphere (Vector3 _center, float _radius)
-		{
-			center = _center;
-			radius = _radius;
+namespace SimpleScene {
+	public struct SSSphere : IEquatable<SSSphere> {
+		public Vector3d Position;
+		public double Radius;
+
+		public SSSphere (Vector3d position, double radius) {
+			Position = position;
+			Radius = radius;
 		}
 
-		public bool Equals(SSSphere other)
-		{
-			return this.center == other.center
-				&& this.radius == other.radius;
+		public bool Equals (SSSphere other) {
+			return Position == other.Position && Radius.Equals(other.Radius);
 		}
 
-		public bool IntersectsSphere(SSSphere other)
-		{
-			float addedR = this.radius + other.radius;
-			float addedRSq = addedR * addedR;
-			float distSq = (other.center - this.center).LengthSquared;
+		public bool IntersectsSphere (SSSphere other) {
+			double addedR = Radius + other.Radius;
+			double addedRSq = addedR * addedR;
+			double distSq = (other.Position - Position).sqrMagnitude;
 			return addedRSq >= distSq;
 		}
 
-		public bool IntersectsRay (ref SSRay worldSpaceRay, out float distanceAlongRay)
-		{
-			float distanceToSphereOrigin = OpenTKHelper.DistanceToLine(
-				worldSpaceRay, this.center, out distanceAlongRay);
-			return distanceToSphereOrigin <= this.radius;
+		public bool IntersectsCapsule (SSCapsule other) {
+			return Mathd.ClosestSegmentToSegmentDistance(Position, Position, other.P0, other.P1) < Radius + other.Radius;
 		}
 
-		public bool IntersectsAABB(SSAABB aabb)
-		{
-			return aabb.IntersectsSphere (this);
-		}
-
-		public SSAABB ToAABB()
-		{
-			Vector3 rvec = new Vector3 (radius);
-			return new SSAABB (center - rvec, center + rvec);
+		public SSAABB ToAABB () {
+			Vector3d rvec = new Vector3d(Radius);
+			return new SSAABB(Position - rvec, Position + rvec);
 		}
 	}
 }
-

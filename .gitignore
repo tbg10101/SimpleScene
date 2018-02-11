@@ -19,8 +19,8 @@
 *.suo
 *.vs
 
+# JetBrains Rider
+.idea
 
-
-
-
-
+# Unity3d
+*.meta

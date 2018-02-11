@@ -1,4 +1,4 @@
-﻿// Copyright(C) David W. Jeske, 2014, and released to the public domain. 
+﻿// Copyright(C) David W. Jeske, 2014, and released to the public domain.
 //
 // Dynamic BVH (Bounding Volume Hierarchy) using incremental refit and tree-rotations
 //
@@ -11,133 +11,127 @@
 // see also:  Space Partitioning: Octree vs. BVH
 //            http://thomasdiewald.com/blog/?p=1488
 //
-//
+// Converted to Unity 64-bit by Tristan Bellman-Greenwood
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-
-using OpenTK;
+using UnityEngine;
 
 // TODO: handle merge/split when LEAF_OBJ_MAX > 1 and objects move
 // TODO: add sphere traversal
 
-namespace SimpleScene.Util.ssBVH
-{
-    public enum Axis {
-        X,Y,Z,
-    }
+namespace SimpleScene.Util.ssBVH {
+	public enum Axis {
+		X,
+		Y,
+		Z
+	}
 
-    public interface SSBVHNodeAdaptor<GO> {
-        ssBVH<GO> BVH { get; }
-        void setBVH(ssBVH<GO> bvh);
-        Vector3 objectpos(GO obj);
-        float radius(GO obj);
-        void mapObjectToBVHLeaf(GO obj, ssBVHNode<GO> leaf);
-        void unmapObject(GO obj);
-        void checkMap(GO obj);
-        ssBVHNode<GO> getLeaf(GO obj);
-    }
+	public interface SSBVHNodeAdaptor<T> {
+		ssBVH<T> BVH { get; }
+		void setBVH (ssBVH<T> bvh);
+		Vector3d objectpos (T obj);
+		double radius (T obj);
+		void mapObjectToBVHLeaf (T obj, ssBVHNode<T> leaf);
+		void unmapObject (T obj);
+		void checkMap (T obj);
+		ssBVHNode<T> getLeaf (T obj);
+	}
 
-    public class ssBVH<GO>
-    {
-        public ssBVHNode<GO> rootBVH;
-        public SSBVHNodeAdaptor<GO> nAda;
-        public readonly int LEAF_OBJ_MAX;
-        public int nodeCount = 0;
-        public int maxDepth = 0;
+	public class ssBVH<T> {
+		public readonly ssBVHNode<T> rootBVH;
+		public readonly SSBVHNodeAdaptor<T> nAda;
+		public readonly int LEAF_OBJ_MAX;
+		public int nodeCount = 0;
+		public int maxDepth = 0;
 
-        public HashSet<ssBVHNode<GO>> refitNodes = new HashSet<ssBVHNode<GO>>();
+		public readonly HashSet<ssBVHNode<T>> refitNodes = new HashSet<ssBVHNode<T>>();
 
-        public delegate bool NodeTest(SSAABB box);
+		public delegate bool NodeTest (SSAABB box);
 
-        // internal functional traversal...
-        private void _traverse(ssBVHNode<GO> curNode, NodeTest hitTest, List<ssBVHNode<GO>> hitlist) {
-            if (curNode == null) { return; }
-            if (hitTest(curNode.box)) {
-                hitlist.Add(curNode);
-                _traverse(curNode.left,hitTest,hitlist);
-                _traverse(curNode.right,hitTest,hitlist);
-            }
-        }
+		// internal functional traversal...
+		private static void _query (ssBVHNode<T> curNode, NodeTest hitTest, ICollection<ssBVHNode<T>> hitlist) {
+			if (curNode == null) {
+				return;
+			}
 
-        // public interface to traversal..
-        public List<ssBVHNode<GO>> traverse(NodeTest hitTest) {
-            var hits = new List<ssBVHNode<GO>>();
-            this._traverse(rootBVH,hitTest,hits);
-            return hits;
-        }
-        
-        // left in for compatibility..
-        public List<ssBVHNode<GO>> traverseRay(SSRay ray) {
-            float tnear = 0f, tfar = 0f;
+			if (hitTest(curNode.box)) {
+				hitlist.Add(curNode);
+				_query(curNode.left, hitTest, hitlist);
+				_query(curNode.right, hitTest, hitlist);
+			}
+		}
 
-            return traverse( box => OpenTKHelper.intersectRayAABox1(ray,box,ref tnear, ref tfar) );
-        }
+		// public interface to traversal..
+		public List<ssBVHNode<T>> Query (NodeTest hitTest) {
+			var hits = new List<ssBVHNode<T>>();
+			_query(rootBVH, hitTest, hits);
+			return hits;
+		}
 
-        public List<ssBVHNode<GO>> traverse(SSRay ray) {
-            float tnear = 0f, tfar = 0f;
+		public List<ssBVHNode<T>> Query (SSRay ray) {
+			double tnear = 0f, tfar = 0f;
 
-            return traverse( box => OpenTKHelper.intersectRayAABox1(ray,box,ref tnear, ref tfar) );
-        }
-        public List<ssBVHNode<GO>> traverse(SSAABB volume) {
-            return traverse( box => box.IntersectsAABB(volume) );            
-        }
+			return Query(box => OpenTKHelper.IntersectRayAABox1(ray, box, ref tnear, ref tfar));
+		}
 
-        /// <summary>
-        /// Call this to batch-optimize any object-changes notified through 
-        /// ssBVHNode.refit_ObjectChanged(..). For example, in a game-loop, 
-        /// call this once per frame.
-        /// </summary>
+		public List<ssBVHNode<T>> Query (SSAABB volume) {
+			return Query(box => box.IntersectsAABB(volume));
+		}
 
-        public void optimize() {  
-            if (LEAF_OBJ_MAX != 1) {
-                throw new Exception("In order to use optimize, you must set LEAF_OBJ_MAX=1");
-            }
-                  
-            while (refitNodes.Count > 0) {                
-                int maxdepth = refitNodes.Max( n => n.depth );
-            
-                var sweepNodes = refitNodes.Where( n => n.depth == maxdepth ).ToList();
-                sweepNodes.ForEach( n => refitNodes.Remove(n) );
+		/// <summary>
+		/// Call this to batch-optimize any object-changes notified through
+		/// ssBVHNode.refit_ObjectChanged(..). For example, in a game-loop,
+		/// call this once per frame.
+		/// </summary>
+		public void Optimize () {
+			if (LEAF_OBJ_MAX != 1) {
+				throw new Exception("In order to use optimize, you must set LEAF_OBJ_MAX=1");
+			}
 
-                sweepNodes.ForEach( n => n.tryRotate(this) );                
-            }            
-        }
+			while (refitNodes.Count > 0) {
+				int maxdepth = refitNodes.Max(n => n.depth);
 
-        public void addObject(GO newOb) {
-            SSAABB box = SSAABB.FromSphere(nAda.objectpos(newOb),nAda.radius(newOb));
-            float boxSAH = ssBVHNode<GO>.SA(ref box);
-            rootBVH.addObject(nAda,newOb, ref box, boxSAH);
-        }
+				var sweepNodes = refitNodes.Where(n => n.depth == maxdepth).ToList();
+				sweepNodes.ForEach(n => refitNodes.Remove(n));
 
-        public void removeObject(GO newObj) {
-            var leaf = nAda.getLeaf(newObj);
-            leaf.removeObject(nAda,newObj);
-        }
+				sweepNodes.ForEach(n => n.tryRotate(this));
+			}
+		}
 
-        public int countBVHNodes() {
-            return rootBVH.countBVHNodes();
-        }
+		public void AddObject (T newOb) {
+			SSAABB box = SSAABB.FromSphere(nAda.objectpos(newOb), nAda.radius(newOb));
+			double boxSAH = ssBVHNode<T>.SA(ref box);
+			rootBVH.addObject(nAda, newOb, ref box, boxSAH);
+		}
 
-        /// <summary>
-        /// initializes a BVH with a given nodeAdaptor, and object list.
-        /// </summary>
-        /// <param name="nodeAdaptor"></param>
-        /// <param name="objects"></param>
-        /// <param name="LEAF_OBJ_MAX">WARNING! currently this must be 1 to use dynamic BVH updates</param>
-        public ssBVH(SSBVHNodeAdaptor<GO> nodeAdaptor, List<GO> objects, int LEAF_OBJ_MAX = 1) {
-            this.LEAF_OBJ_MAX = LEAF_OBJ_MAX;
-            nodeAdaptor.setBVH(this);
-            this.nAda = nodeAdaptor;
-            
-            if (objects.Count > 0) {
-                rootBVH = new ssBVHNode<GO>(this,objects);            
-            } else {                
-                rootBVH = new ssBVHNode<GO>(this);
-                rootBVH.gobjects = new List<GO>(); // it's a leaf, so give it an empty object list
-            }
-        }       
-    }   
+		public void RemoveObject (T newObj) {
+			var leaf = nAda.getLeaf(newObj);
+			leaf.removeObject(nAda, newObj);
+		}
+
+		public int Count () {
+			return rootBVH.countBVHNodes();
+		}
+
+		/// <summary>
+		/// initializes a BVH with a given nodeAdaptor, and object list.
+		/// </summary>
+		/// <param name="nodeAdaptor"></param>
+		/// <param name="objects"></param>
+		/// <param name="LEAF_OBJ_MAX">WARNING! currently this must be 1 to use dynamic BVH updates</param>
+		public ssBVH (SSBVHNodeAdaptor<T> nodeAdaptor, List<T> objects, int LEAF_OBJ_MAX = 1) {
+			this.LEAF_OBJ_MAX = LEAF_OBJ_MAX;
+			nodeAdaptor.setBVH(this);
+			nAda = nodeAdaptor;
+
+			if (objects.Count > 0) {
+				rootBVH = new ssBVHNode<T>(this, objects);
+			} else {
+				rootBVH = new ssBVHNode<T>(this);
+				rootBVH.gobjects = new List<T>(); // it's a leaf, so give it an empty object list
+			}
+		}
+	}
 }
