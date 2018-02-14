@@ -95,16 +95,28 @@ namespace SimpleScene {
 			return result;
 		}
 
-		public Boundsd ToBoundsd () {
-			Vector3d extendsVector = new Vector3d(_extends0);
+		public Boundsd Bounds {
+			get {
+				Vector3d extendsVector = new Vector3d(_extends0);
 
-			switch (_shapeTypeValue) {
-				case ShapeType.Sphere:
-					return Boundsd.FromCenterAndExtents(_position0, extendsVector);
-				case ShapeType.Capsule:
-					return Boundsd.FromPoints(Vector3d.Min(_position0, _position1) - extendsVector, Vector3d.Max(_position0, _position1) + extendsVector);
-				default:
-					return new Boundsd();
+				switch (_shapeTypeValue) {
+					case ShapeType.Sphere:
+						return Boundsd.FromCenterAndExtents(_position0, extendsVector);
+					case ShapeType.Capsule:
+						return Boundsd.FromPoints(Vector3d.Min(_position0, _position1) - extendsVector, Vector3d.Max(_position0, _position1) + extendsVector);
+					default:
+						return new Boundsd();
+				}
+			}
+		}
+
+		public Vector3d Centroid {
+			get {
+				if (ShapeTypeValue == ShapeType.Capsule) {
+					return (_position0 + _position1) / 2.0;
+				}
+
+				return _position0;
 			}
 		}
 

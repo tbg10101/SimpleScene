@@ -28,7 +28,7 @@ using UnityEngine;
 
 namespace SimpleScene.Util.ssBVH {
 	public class ssBVHNode<GO> {
-		public SSAABB box;
+		public Boundsd box;
 
 		public ssBVHNode<GO> parent;
 		public ssBVHNode<GO> left;
@@ -44,9 +44,9 @@ namespace SimpleScene.Util.ssBVH {
 		}
 
 		private Axis PickSplitAxis () {
-			double axis_x = box.Max.x - box.Min.x;
-			double axis_y = box.Max.y - box.Min.y;
-			double axis_z = box.Max.z - box.Min.z;
+			double axis_x = box.max.x - box.min.x;
+			double axis_y = box.max.y - box.min.y;
+			double axis_z = box.max.z - box.min.z;
 
 			// return the biggest axis
 			if (axis_x > axis_y) {
@@ -90,7 +90,7 @@ namespace SimpleScene.Util.ssBVH {
 				throw new Exception("dangling leaf!");
 			}
 
-			if (refitVolume(nAda)) {
+			if (RefitVolume(nAda)) {
 				// add our parent to the optimize list...
 				if (parent != null) {
 					nAda.BVH.refitNodes.Add(parent);
@@ -102,149 +102,77 @@ namespace SimpleScene.Util.ssBVH {
 			}
 		}
 
-		private void ExpandVolume (SSBVHNodeAdaptor<GO> nAda, Vector3d objectpos, double radius) {
-			bool expanded = false;
+		private void ExpandVolume (Boundsd bounds) {
+			Boundsd oldBox = box;
+			box.ExpandToFit(bounds);
 
-			// test min X and max X against the current bounding volume
-			if ((objectpos.x - radius) < box.Min.x) {
-				box.Min.x = (objectpos.x - radius);
-				expanded = true;
-			}
-
-			if ((objectpos.x + radius) > box.Max.x) {
-				box.Max.x = (objectpos.x + radius);
-				expanded = true;
-			}
-
-			// test min Y and max Y against the current bounding volume
-			if ((objectpos.y - radius) < box.Min.y) {
-				box.Min.y = (objectpos.y - radius);
-				expanded = true;
-			}
-
-			if ((objectpos.y + radius) > box.Max.y) {
-				box.Max.y = (objectpos.y + radius);
-				expanded = true;
-			}
-
-			// test min Z and max Z against the current bounding volume
-			if ((objectpos.z - radius) < box.Min.z) {
-				box.Min.z = (objectpos.z - radius);
-				expanded = true;
-			}
-
-			if ((objectpos.z + radius) > box.Max.z) {
-				box.Max.z = (objectpos.z + radius);
-				expanded = true;
-			}
-
-			if (expanded && parent != null) {
-				parent.childExpanded(nAda, this);
+			if (!oldBox.Equals(box) && parent != null) {
+				parent.ExpandVolume(box);
 			}
 		}
 
-		private void assignVolume (Vector3d objectpos, double radius) {
-			box.Min.x = objectpos.x - radius;
-			box.Max.x = objectpos.x + radius;
-			box.Min.y = objectpos.y - radius;
-			box.Max.y = objectpos.y + radius;
-			box.Min.z = objectpos.z - radius;
-			box.Max.z = objectpos.z + radius;
-		}
+		internal void ComputeVolume (SSBVHNodeAdaptor<GO> nAda) {
+			box = nAda.GetObjectBounds(gobjects[0]);
 
-		internal void computeVolume (SSBVHNodeAdaptor<GO> nAda) {
-			assignVolume(nAda.objectpos(gobjects[0]), nAda.radius(gobjects[0]));
 			for (int i = 1; i < gobjects.Count; i++) {
-				ExpandVolume(nAda, nAda.objectpos(gobjects[i]), nAda.radius(gobjects[i]));
+				ExpandVolume(nAda.GetObjectBounds(gobjects[i]));
 			}
 		}
 
-		internal bool refitVolume (SSBVHNodeAdaptor<GO> nAda) {
+		internal bool RefitVolume (SSBVHNodeAdaptor<GO> nAda) {
 			if (gobjects.Count == 0) {
 				throw new NotImplementedException();
 			} // TODO: fix this... we should never get called in this case...
 
-			SSAABB oldbox = box;
+			Boundsd oldbox = box;
 
-			computeVolume(nAda);
+			ComputeVolume(nAda);
 			if (!box.Equals(oldbox)) {
-				if (parent != null) parent.childRefit(nAda);
+				if (parent != null) parent.ChildRefit(nAda);
 				return true;
 			}
 
 			return false;
 		}
 
-		internal static double SA (SSAABB box) {
-			double x_size = box.Max.x - box.Min.x;
-			double y_size = box.Max.y - box.Min.y;
-			double z_size = box.Max.z - box.Min.z;
+		internal static double SA (Boundsd box) {
+			double x_size = box.max.x - box.max.x;
+			double y_size = box.max.y - box.max.y;
+			double z_size = box.max.z - box.max.z;
 
 			return 2.0f * ((x_size * y_size) + (x_size * z_size) + (y_size * z_size));
 		}
 
-		internal static double SA (ref SSAABB box) {
-			double x_size = box.Max.x - box.Min.x;
-			double y_size = box.Max.y - box.Min.y;
-			double z_size = box.Max.z - box.Min.z;
+		internal static double SA (ref Boundsd box) {
+			double x_size = box.max.x - box.min.x;
+			double y_size = box.max.y - box.min.y;
+			double z_size = box.max.z - box.min.z;
 
 			return 2.0f * ((x_size * y_size) + (x_size * z_size) + (y_size * z_size));
 		}
 
 		internal static double SA (ssBVHNode<GO> node) {
-			double x_size = node.box.Max.x - node.box.Min.x;
-			double y_size = node.box.Max.y - node.box.Min.y;
-			double z_size = node.box.Max.z - node.box.Min.z;
+			double x_size = node.box.max.x - node.box.min.x;
+			double y_size = node.box.max.y - node.box.min.y;
+			double z_size = node.box.max.z - node.box.min.z;
 
 			return 2.0f * ((x_size * y_size) + (x_size * z_size) + (y_size * z_size));
 		}
 
-		internal static double SA (SSBVHNodeAdaptor<GO> nAda, GO obj) {
-			double radius = nAda.radius(obj);
-
-			double size = radius * 2;
-			return 6.0f * (size * size);
-		}
-
-		internal static SSAABB AABBofPair (ssBVHNode<GO> nodea, ssBVHNode<GO> nodeb) {
-			SSAABB box = nodea.box;
+		internal static Boundsd BoundsOfPair (ssBVHNode<GO> nodea, ssBVHNode<GO> nodeb) {
+			Boundsd box = nodea.box;
 			box.ExpandToFit(nodeb.box);
-			return box;
-		}
-
-		internal double SAofPair (ssBVHNode<GO> nodea, ssBVHNode<GO> nodeb) {
-			SSAABB box = nodea.box;
-			box.ExpandToFit(nodeb.box);
-			return SA(ref box);
-		}
-
-		internal double SAofPair (SSAABB boxa, SSAABB boxb) {
-			SSAABB pairbox = boxa;
-			pairbox.ExpandToFit(boxb);
-			return SA(ref pairbox);
-		}
-
-		internal static SSAABB AABBofOBJ (SSBVHNodeAdaptor<GO> nAda, GO obj) {
-			double radius = nAda.radius(obj);
-			SSAABB box;
-			box.Min.x = -radius;
-			box.Max.x = radius;
-			box.Min.y = -radius;
-			box.Max.y = radius;
-			box.Min.z = -radius;
-			box.Max.z = radius;
 			return box;
 		}
 
 		internal double SAofList (SSBVHNodeAdaptor<GO> nAda, List<GO> list) {
-			var box = AABBofOBJ(nAda, list[0]);
+			Boundsd box = nAda.GetObjectBounds(list[0]);
 
-			list.ToList().GetRange(1, list.Count - 1).ForEach(
-				obj => {
-					var newbox = AABBofOBJ(nAda, obj);
-					box.ExpandBy(newbox);
-				});
-			return SA(box);
+			for (int i = 1; i < list.Count - 1; i++) {
+				box.ExpandToFit(nAda.GetObjectBounds(list[i]));
+			}
+
+			return SA(ref box);
 		}
 
 		// The list of all candidate rotations, from "Fast, Effective BVH Updates for Animated Scenes", Figure 1.
@@ -283,7 +211,7 @@ namespace SimpleScene.Util.ssBVH {
 		/// tryRotate looks at all candidate rotations, and executes the rotation with the best resulting SAH (if any)
 		/// </summary>
 		/// <param name="bvh"></param>
-		internal void tryRotate (ssBVH<GO> bvh) {
+		internal void TryRotate (ssBVH<GO> bvh) {
 			SSBVHNodeAdaptor<GO> nAda = bvh.nAda;
 
 			// if we are not a grandparent, then we can't rotate, so queue our parent and bail out
@@ -306,23 +234,23 @@ namespace SimpleScene.Util.ssBVH {
 						// child to grandchild rotations
 						case Rot.L_RL:
 							if (right.IsLeaf) return new rotOpt(double.MaxValue, Rot.NONE);
-							else return new rotOpt(SA(right.left) + SA(AABBofPair(left, right.right)), rot);
+							else return new rotOpt(SA(right.left) + SA(BoundsOfPair(left, right.right)), rot);
 						case Rot.L_RR:
 							if (right.IsLeaf) return new rotOpt(double.MaxValue, Rot.NONE);
-							else return new rotOpt(SA(right.right) + SA(AABBofPair(left, right.left)), rot);
+							else return new rotOpt(SA(right.right) + SA(BoundsOfPair(left, right.left)), rot);
 						case Rot.R_LL:
 							if (left.IsLeaf) return new rotOpt(double.MaxValue, Rot.NONE);
-							else return new rotOpt(SA(AABBofPair(right, left.right)) + SA(left.left), rot);
+							else return new rotOpt(SA(BoundsOfPair(right, left.right)) + SA(left.left), rot);
 						case Rot.R_LR:
 							if (left.IsLeaf) return new rotOpt(double.MaxValue, Rot.NONE);
-							else return new rotOpt(SA(AABBofPair(right, left.left)) + SA(left.right), rot);
+							else return new rotOpt(SA(BoundsOfPair(right, left.left)) + SA(left.right), rot);
 						// grandchild to grandchild rotations
 						case Rot.LL_RR:
 							if (left.IsLeaf || right.IsLeaf) return new rotOpt(double.MaxValue, Rot.NONE);
-							else return new rotOpt(SA(AABBofPair(right.right, left.right)) + SA(AABBofPair(right.left, left.left)), rot);
+							else return new rotOpt(SA(BoundsOfPair(right.right, left.right)) + SA(BoundsOfPair(right.left, left.left)), rot);
 						case Rot.LL_RL:
 							if (left.IsLeaf || right.IsLeaf) return new rotOpt(double.MaxValue, Rot.NONE);
-							else return new rotOpt(SA(AABBofPair(right.left, left.right)) + SA(AABBofPair(left.left, right.right)), rot);
+							else return new rotOpt(SA(BoundsOfPair(right.left, left.right)) + SA(BoundsOfPair(left.left, right.right)), rot);
 						// unknown...
 						default: throw new NotImplementedException("missing implementation for BVH Rotation SAH Computation .. " + rot.ToString());
 					}
@@ -363,7 +291,7 @@ namespace SimpleScene.Util.ssBVH {
 						left.parent = this;
 						right.left = swap;
 						swap.parent = right;
-						right.childRefit(nAda, propagate: false);
+						right.ChildRefit(nAda, propagate: false);
 						break;
 					case Rot.L_RR:
 						swap = left;
@@ -371,7 +299,7 @@ namespace SimpleScene.Util.ssBVH {
 						left.parent = this;
 						right.right = swap;
 						swap.parent = right;
-						right.childRefit(nAda, propagate: false);
+						right.ChildRefit(nAda, propagate: false);
 						break;
 					case Rot.R_LL:
 						swap = right;
@@ -379,7 +307,7 @@ namespace SimpleScene.Util.ssBVH {
 						right.parent = this;
 						left.left = swap;
 						swap.parent = left;
-						left.childRefit(nAda, propagate: false);
+						left.ChildRefit(nAda, propagate: false);
 						break;
 					case Rot.R_LR:
 						swap = right;
@@ -387,7 +315,7 @@ namespace SimpleScene.Util.ssBVH {
 						right.parent = this;
 						left.right = swap;
 						swap.parent = left;
-						left.childRefit(nAda, propagate: false);
+						left.ChildRefit(nAda, propagate: false);
 						break;
 
 					// grandchild to grandchild rotations
@@ -397,8 +325,8 @@ namespace SimpleScene.Util.ssBVH {
 						right.right = swap;
 						left.left.parent = left;
 						swap.parent = right;
-						left.childRefit(nAda, propagate: false);
-						right.childRefit(nAda, propagate: false);
+						left.ChildRefit(nAda, propagate: false);
+						right.ChildRefit(nAda, propagate: false);
 						break;
 					case Rot.LL_RL:
 						swap = left.left;
@@ -406,8 +334,8 @@ namespace SimpleScene.Util.ssBVH {
 						right.left = swap;
 						left.left.parent = left;
 						swap.parent = right;
-						left.childRefit(nAda, propagate: false);
-						right.childRefit(nAda, propagate: false);
+						left.ChildRefit(nAda, propagate: false);
+						right.ChildRefit(nAda, propagate: false);
 						break;
 
 					// unknown...
@@ -420,7 +348,7 @@ namespace SimpleScene.Util.ssBVH {
 					case Rot.L_RR:
 					case Rot.R_LL:
 					case Rot.R_LR:
-						setDepth(nAda, depth);
+						SetDepth(nAda, depth);
 						break;
 				}
 			}
@@ -452,10 +380,10 @@ namespace SimpleScene.Util.ssBVH {
 			}
 		}
 
-		internal void splitNode (SSBVHNodeAdaptor<GO> nAda) {
+		private void SplitNode (SSBVHNodeAdaptor<GO> nAda) {
 			// second, decide which axis to split on, and sort..
 			List<GO> splitlist = gobjects;
-			splitlist.ForEach(o => nAda.unmapObject(o));
+			splitlist.ForEach(nAda.UnmapObject);
 			int center = splitlist.Count / 2; // find the center object
 
 			SplitAxisOpt<GO> bestSplit = eachAxis.Min(
@@ -463,13 +391,13 @@ namespace SimpleScene.Util.ssBVH {
 					var orderedlist = new List<GO>(splitlist);
 					switch (axis) {
 						case Axis.X:
-							orderedlist.Sort(delegate (GO go1, GO go2) { return nAda.objectpos(go1).x.CompareTo(nAda.objectpos(go2).x); });
+							orderedlist.Sort((go1, go2) => nAda.GetObjectPosition(go1).x.CompareTo(nAda.GetObjectPosition(go2).x));
 							break;
 						case Axis.Y:
-							orderedlist.Sort(delegate (GO go1, GO go2) { return nAda.objectpos(go1).y.CompareTo(nAda.objectpos(go2).y); });
+							orderedlist.Sort((go1, go2) => nAda.GetObjectPosition(go1).y.CompareTo(nAda.GetObjectPosition(go2).y));
 							break;
 						case Axis.Z:
-							orderedlist.Sort(delegate (GO go1, GO go2) { return nAda.objectpos(go1).z.CompareTo(nAda.objectpos(go2).z); });
+							orderedlist.Sort((go1, go2) => nAda.GetObjectPosition(go1).z.CompareTo(nAda.GetObjectPosition(go2).z));
 							break;
 						default:
 							throw new NotImplementedException("unknown split axis: " + axis.ToString());
@@ -484,49 +412,51 @@ namespace SimpleScene.Util.ssBVH {
 
 			// perform the split
 			gobjects = null;
-			left = new ssBVHNode<GO>(nAda.BVH, this, bestSplit.left, bestSplit.axis, depth + 1); // Split the Hierarchy to the left
-			right = new ssBVHNode<GO>(nAda.BVH, this, bestSplit.right, bestSplit.axis, depth + 1); // Split the Hierarchy to the right
+			left = new ssBVHNode<GO>(nAda.BVH, this, bestSplit.left, depth + 1); // Split the Hierarchy to the left
+			right = new ssBVHNode<GO>(nAda.BVH, this, bestSplit.right, depth + 1); // Split the Hierarchy to the right
 		}
 
-		internal void splitIfNecessary (SSBVHNodeAdaptor<GO> nAda) {
+		private void SplitIfNecessary (SSBVHNodeAdaptor<GO> nAda) {
 			if (gobjects.Count > nAda.BVH.LEAF_OBJ_MAX) {
-				splitNode(nAda);
+				SplitNode(nAda);
 			}
 		}
 
-		internal void addObject (SSBVHNodeAdaptor<GO> nAda, GO newOb, ref SSAABB newObBox, double newObSAH) {
-			addObject(nAda, this, newOb, ref newObBox, newObSAH);
+		internal void AddObject (SSBVHNodeAdaptor<GO> nAda, GO newOb, ref Boundsd newObBox, double newObSAH) {
+			AddObject(nAda, this, newOb, ref newObBox, newObSAH);
 		}
 
-		internal static void addObject_Pushdown (SSBVHNodeAdaptor<GO> nAda, ssBVHNode<GO> curNode, GO newOb) {
+		private static void addObject_Pushdown (SSBVHNodeAdaptor<GO> nAda, ssBVHNode<GO> curNode, GO newOb) {
 			var left = curNode.left;
 			var right = curNode.right;
 
 			// merge and pushdown left and right as a new node..
-			var mergedSubnode = new ssBVHNode<GO>(nAda.BVH);
-			mergedSubnode.left = left;
-			mergedSubnode.right = right;
-			mergedSubnode.parent = curNode;
-			mergedSubnode.gobjects = null; // we need to be an interior node... so null out our object list..
+			var mergedSubnode = new ssBVHNode<GO>(nAda.BVH) {
+				left = left,
+				right = right,
+				parent = curNode,
+				gobjects = null
+			};
+			// we need to be an interior node... so null out our object list..
 			left.parent = mergedSubnode;
 			right.parent = mergedSubnode;
-			mergedSubnode.childRefit(nAda, propagate: false);
+			mergedSubnode.ChildRefit(nAda, false);
 
 			// make new subnode for obj
 			var newSubnode = new ssBVHNode<GO>(nAda.BVH);
 			newSubnode.parent = curNode;
 			newSubnode.gobjects = new List<GO> {newOb};
-			nAda.mapObjectToBVHLeaf(newOb, newSubnode);
-			newSubnode.computeVolume(nAda);
+			nAda.MapObjectToBvhLeaf(newOb, newSubnode);
+			newSubnode.ComputeVolume(nAda);
 
 			// make assignments..
 			curNode.left = mergedSubnode;
 			curNode.right = newSubnode;
-			curNode.setDepth(nAda, curNode.depth); // propagate new depths to our children.
-			curNode.childRefit(nAda);
+			curNode.SetDepth(nAda, curNode.depth); // propagate new depths to our children.
+			curNode.ChildRefit(nAda);
 		}
 
-		internal static void addObject (SSBVHNodeAdaptor<GO> nAda, ssBVHNode<GO> curNode, GO newOb, ref SSAABB newObBox, double newObSAH) {
+		private static void AddObject (SSBVHNodeAdaptor<GO> nAda, ssBVHNode<GO> curNode, GO newOb, ref Boundsd newObBox, double newObSAH) {
 			// 1. first we traverse the node looking for the best leaf
 			while (curNode.gobjects == null) {
 				// find the best way to add this object.. 3 options..
@@ -539,9 +469,9 @@ namespace SimpleScene.Util.ssBVH {
 
 				double leftSAH = SA(left);
 				double rightSAH = SA(right);
-				double sendLeftSAH = rightSAH + SA(left.box.ExpandedBy(newObBox)); // (L+N,R)
-				double sendRightSAH = leftSAH + SA(right.box.ExpandedBy(newObBox)); // (L,R+N)
-				double mergedLeftAndRightSAH = SA(AABBofPair(left, right)) + newObSAH; // (L+R,N)
+				double sendLeftSAH = rightSAH + SA(left.box.ExpandedToFit(newObBox)); // (L+N,R)
+				double sendRightSAH = leftSAH + SA(right.box.ExpandedToFit(newObBox)); // (L,R+N)
+				double mergedLeftAndRightSAH = SA(BoundsOfPair(left, right)) + newObSAH; // (L+R,N)
 
 				// Doing a merge-and-pushdown can be expensive, so we only do it if it's notably better
 				const double MERGE_DISCOUNT = 0.3f;
@@ -560,52 +490,52 @@ namespace SimpleScene.Util.ssBVH {
 
 			// 2. then we add the object and map it to our leaf
 			curNode.gobjects.Add(newOb);
-			nAda.mapObjectToBVHLeaf(newOb, curNode);
-			curNode.refitVolume(nAda);
+			nAda.MapObjectToBvhLeaf(newOb, curNode);
+			curNode.RefitVolume(nAda);
 			// split if necessary...
-			curNode.splitIfNecessary(nAda);
+			curNode.SplitIfNecessary(nAda);
 		}
 
-		internal int countBVHNodes () {
+		internal int CountBvhNodes () {
 			if (gobjects != null) {
 				return 1;
 			}
 
-			return left.countBVHNodes() + right.countBVHNodes();
+			return left.CountBvhNodes() + right.CountBvhNodes();
 		}
 
-		internal void removeObject (SSBVHNodeAdaptor<GO> nAda, GO newOb) {
+		internal void RemoveObject (SSBVHNodeAdaptor<GO> nAda, GO newOb) {
 			if (gobjects == null) {
 				throw new Exception("removeObject() called on nonLeaf!");
 			}
 
-			nAda.unmapObject(newOb);
+			nAda.UnmapObject(newOb);
 			gobjects.Remove(newOb);
 			if (gobjects.Count > 0) {
-				refitVolume(nAda);
+				RefitVolume(nAda);
 			} else {
 				// our leaf is empty, so collapse it if we are not the root...
 				if (parent != null) {
 					gobjects = null;
-					parent.removeLeaf(nAda, this);
+					parent.RemoveLeaf(nAda, this);
 					parent = null;
 				}
 			}
 		}
 
-		void setDepth (SSBVHNodeAdaptor<GO> nAda, int newdepth) {
+		void SetDepth (SSBVHNodeAdaptor<GO> nAda, int newdepth) {
 			depth = newdepth;
-			if (newdepth > nAda.BVH.maxDepth) {
-				nAda.BVH.maxDepth = newdepth;
+			if (newdepth > nAda.BVH.MaxDepth) {
+				nAda.BVH.MaxDepth = newdepth;
 			}
 
 			if (gobjects == null) {
-				left.setDepth(nAda, newdepth + 1);
-				right.setDepth(nAda, newdepth + 1);
+				left.SetDepth(nAda, newdepth + 1);
+				right.SetDepth(nAda, newdepth + 1);
 			}
 		}
 
-		internal void removeLeaf (SSBVHNodeAdaptor<GO> nAda, ssBVHNode<GO> removeLeaf) {
+		private void RemoveLeaf (SSBVHNodeAdaptor<GO> nAda, ssBVHNode<GO> removeLeaf) {
 			if (left == null || right == null) {
 				throw new Exception("bad intermediate node");
 			}
@@ -631,136 +561,29 @@ namespace SimpleScene.Util.ssBVH {
 			if (gobjects == null) {
 				left.parent = this;
 				right.parent = this; // reassign child parents..
-				setDepth(nAda, depth); // this reassigns depth for our children
+				SetDepth(nAda, depth); // this reassigns depth for our children
 			} else {
 				// map the objects we adopted to us...
-				gobjects.ForEach(o => { nAda.mapObjectToBVHLeaf(o, this); });
+				gobjects.ForEach(o => { nAda.MapObjectToBvhLeaf(o, this); });
 			}
 
 			// propagate our new volume..
 			if (parent != null) {
-				parent.childRefit(nAda);
+				parent.ChildRefit(nAda);
 			}
 		}
 
-
-		internal ssBVHNode<GO> rootNode () {
-			ssBVHNode<GO> cur = this;
-			while (cur.parent != null) {
-				cur = cur.parent;
-			}
-
-			return cur;
+		private void ChildRefit (SSBVHNodeAdaptor<GO> nAda, bool propagate = true) {
+			ChildRefit(nAda, this, propagate);
 		}
 
-
-		internal void findOverlappingLeaves (SSBVHNodeAdaptor<GO> nAda, Vector3d origin, double radius, List<ssBVHNode<GO>> overlapList) {
-			if (toAABB().IntersectsSphere(origin, radius)) {
-				if (gobjects != null) {
-					overlapList.Add(this);
-				} else {
-					left.findOverlappingLeaves(nAda, origin, radius, overlapList);
-					right.findOverlappingLeaves(nAda, origin, radius, overlapList);
-				}
-			}
-		}
-
-		internal void findOverlappingLeaves (SSBVHNodeAdaptor<GO> nAda, SSAABB aabb, List<ssBVHNode<GO>> overlapList) {
-			if (toAABB().IntersectsAABB(aabb)) {
-				if (gobjects != null) {
-					overlapList.Add(this);
-				} else {
-					left.findOverlappingLeaves(nAda, aabb, overlapList);
-					right.findOverlappingLeaves(nAda, aabb, overlapList);
-				}
-			}
-		}
-
-		internal SSAABB toAABB () {
-			SSAABB aabb = new SSAABB();
-			aabb.Min.x = box.Min.x;
-			aabb.Min.y = box.Min.y;
-			aabb.Min.z = box.Min.z;
-			aabb.Max.x = box.Max.x;
-			aabb.Max.y = box.Max.y;
-			aabb.Max.z = box.Max.z;
-			return aabb;
-		}
-
-		internal void childExpanded (SSBVHNodeAdaptor<GO> nAda, ssBVHNode<GO> child) {
-			bool expanded = false;
-
-			if (child.box.Min.x < box.Min.x) {
-				box.Min.x = child.box.Min.x;
-				expanded = true;
-			}
-
-			if (child.box.Max.x > box.Max.x) {
-				box.Max.x = child.box.Max.x;
-				expanded = true;
-			}
-
-			if (child.box.Min.y < box.Min.y) {
-				box.Min.y = child.box.Min.y;
-				expanded = true;
-			}
-
-			if (child.box.Max.y > box.Max.y) {
-				box.Max.y = child.box.Max.y;
-				expanded = true;
-			}
-
-			if (child.box.Min.z < box.Min.z) {
-				box.Min.z = child.box.Min.z;
-				expanded = true;
-			}
-
-			if (child.box.Max.z > box.Max.z) {
-				box.Max.z = child.box.Max.z;
-				expanded = true;
-			}
-
-			if (expanded && parent != null) {
-				parent.childExpanded(nAda, this);
-			}
-		}
-
-		internal void childRefit (SSBVHNodeAdaptor<GO> nAda, bool propagate = true) {
-			childRefit(nAda, this, propagate: propagate);
-		}
-
-		internal static void childRefit (SSBVHNodeAdaptor<GO> nAda, ssBVHNode<GO> curNode, bool propagate = true) {
+		private static void ChildRefit (SSBVHNodeAdaptor<GO> nAda, ssBVHNode<GO> curNode, bool propagate = true) {
 			do {
 				ssBVHNode<GO> left = curNode.left;
 				ssBVHNode<GO> right = curNode.right;
 
 				// start with the left box
-				SSAABB newBox = left.box;
-
-				// expand any dimension bigger in the right node
-				if (right.box.Min.x < newBox.Min.x) {
-					newBox.Min.x = right.box.Min.x;
-				}
-
-				if (right.box.Min.y < newBox.Min.y) {
-					newBox.Min.y = right.box.Min.y;
-				}
-
-				if (right.box.Min.z < newBox.Min.z) {
-					newBox.Min.z = right.box.Min.z;
-				}
-
-				if (right.box.Max.x > newBox.Max.x) {
-					newBox.Max.x = right.box.Max.x;
-				}
-
-				if (right.box.Max.y > newBox.Max.y) {
-					newBox.Max.y = right.box.Max.y;
-				}
-
-				if (right.box.Max.z > newBox.Max.z) {
-					newBox.Max.z = right.box.Max.z;
-				}
+				Boundsd newBox = left.box.ExpandedToFit(right.box);
 
 				// now set our box to the newly created box
 				curNode.box = newBox;
@@ -774,20 +597,20 @@ namespace SimpleScene.Util.ssBVH {
 			gobjects = new List<GO>();
 			left = right = null;
 			parent = null;
-			nodeNumber = bvh.nodeCount++;
+			nodeNumber = bvh.NodeCount++;
 		}
 
-		internal ssBVHNode (ssBVH<GO> bvh, List<GO> gobjectlist) : this(bvh, null, gobjectlist, Axis.X, 0) { }
+		internal ssBVHNode (ssBVH<GO> bvh, List<GO> gobjectlist) : this(bvh, null, gobjectlist, 0) { }
 
-		private ssBVHNode (ssBVH<GO> bvh, ssBVHNode<GO> lparent, List<GO> gobjectlist, Axis lastSplitAxis, int curdepth) {
+		private ssBVHNode (ssBVH<GO> bvh, ssBVHNode<GO> lparent, List<GO> gobjectlist, int curdepth) {
 			SSBVHNodeAdaptor<GO> nAda = bvh.nAda;
-			nodeNumber = bvh.nodeCount++;
+			nodeNumber = bvh.NodeCount++;
 
 			parent = lparent; // save off the parent BVHGObj Node
 			depth = curdepth;
 
-			if (bvh.maxDepth < curdepth) {
-				bvh.maxDepth = curdepth;
+			if (bvh.MaxDepth < curdepth) {
+				bvh.MaxDepth = curdepth;
 			}
 
 			// Early out check due to bad data
@@ -803,16 +626,16 @@ namespace SimpleScene.Util.ssBVH {
 				right = null;
 				// at the leaf node we store the remaining objects, so initialize a list
 				gobjects = gobjectlist;
-				gobjects.ForEach(o => nAda.mapObjectToBVHLeaf(o, this));
-				computeVolume(nAda);
-				splitIfNecessary(nAda);
+				gobjects.ForEach(o => nAda.MapObjectToBvhLeaf(o, this));
+				ComputeVolume(nAda);
+				SplitIfNecessary(nAda);
 			} else {
 				// --------------------------------------------------------------------------------------------
 				// if we have more than (bvh.LEAF_OBJECT_COUNT) objects, then compute the volume and split
 				gobjects = gobjectlist;
-				computeVolume(nAda);
-				splitNode(nAda);
-				childRefit(nAda, propagate: false);
+				ComputeVolume(nAda);
+				SplitNode(nAda);
+				ChildRefit(nAda, false);
 			}
 		}
 	}

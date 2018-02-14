@@ -29,26 +29,25 @@ namespace SimpleScene.Util.ssBVH {
 	}
 
 	public interface SSBVHNodeAdaptor<T> {
-		ssBVH<T> BVH { get; }
-		void setBVH (ssBVH<T> bvh);
-		Vector3d objectpos (T obj);
-		double radius (T obj);
-		void mapObjectToBVHLeaf (T obj, ssBVHNode<T> leaf);
-		void unmapObject (T obj);
-		void checkMap (T obj);
-		ssBVHNode<T> getLeaf (T obj);
+		ssBVH<T> BVH { get; set; }
+		Vector3d GetObjectPosition (T obj);
+		Boundsd GetObjectBounds (T obj);
+		void MapObjectToBvhLeaf (T obj, ssBVHNode<T> leaf);
+		void UnmapObject (T obj);
+		void CheckMap (T obj);
+		ssBVHNode<T> GetLeaf (T obj);
 	}
 
 	public class ssBVH<T> {
 		public readonly ssBVHNode<T> rootBVH;
 		public readonly SSBVHNodeAdaptor<T> nAda;
 		public readonly int LEAF_OBJ_MAX;
-		public int nodeCount = 0;
-		public int maxDepth = 0;
+		public int NodeCount = 0;
+		public int MaxDepth = 0;
 
 		public readonly HashSet<ssBVHNode<T>> refitNodes = new HashSet<ssBVHNode<T>>();
 
-		public delegate bool NodeTest (SSAABB box);
+		public delegate bool NodeTest (Boundsd box);
 
 		// internal functional traversal...
 		private static void _query (ssBVHNode<T> curNode, NodeTest hitTest, ICollection<ssBVHNode<T>> hitlist) {
@@ -70,14 +69,12 @@ namespace SimpleScene.Util.ssBVH {
 			return hits;
 		}
 
-		public List<ssBVHNode<T>> Query (SSRay ray) {
-			double tnear = 0f, tfar = 0f;
-
-			return Query(box => OpenTKHelper.IntersectRayAABox1(ray, box, ref tnear, ref tfar));
+		public List<ssBVHNode<T>> Query (Rayd ray) {
+			return Query(ray.IntersectsBounds);
 		}
 
-		public List<ssBVHNode<T>> Query (SSAABB volume) {
-			return Query(box => box.IntersectsAABB(volume));
+		public List<ssBVHNode<T>> Query (Boundsd volume) {
+			return Query(box => box.Intersects(volume));
 		}
 
 		/// <summary>
@@ -96,23 +93,23 @@ namespace SimpleScene.Util.ssBVH {
 				var sweepNodes = refitNodes.Where(n => n.depth == maxdepth).ToList();
 				sweepNodes.ForEach(n => refitNodes.Remove(n));
 
-				sweepNodes.ForEach(n => n.tryRotate(this));
+				sweepNodes.ForEach(n => n.TryRotate(this));
 			}
 		}
 
 		public void AddObject (T newOb) {
-			SSAABB box = SSAABB.FromSphere(nAda.objectpos(newOb), nAda.radius(newOb));
+			Boundsd box = nAda.GetObjectBounds(newOb);
 			double boxSAH = ssBVHNode<T>.SA(ref box);
-			rootBVH.addObject(nAda, newOb, ref box, boxSAH);
+			rootBVH.AddObject(nAda, newOb, ref box, boxSAH);
 		}
 
 		public void RemoveObject (T newObj) {
-			var leaf = nAda.getLeaf(newObj);
-			leaf.removeObject(nAda, newObj);
+			var leaf = nAda.GetLeaf(newObj);
+			leaf.RemoveObject(nAda, newObj);
 		}
 
 		public int Count () {
-			return rootBVH.countBVHNodes();
+			return rootBVH.CountBvhNodes();
 		}
 
 		/// <summary>
@@ -123,7 +120,7 @@ namespace SimpleScene.Util.ssBVH {
 		/// <param name="LEAF_OBJ_MAX">WARNING! currently this must be 1 to use dynamic BVH updates</param>
 		public ssBVH (SSBVHNodeAdaptor<T> nodeAdaptor, List<T> objects, int LEAF_OBJ_MAX = 1) {
 			this.LEAF_OBJ_MAX = LEAF_OBJ_MAX;
-			nodeAdaptor.setBVH(this);
+			nodeAdaptor.BVH = this;
 			nAda = nodeAdaptor;
 
 			if (objects.Count > 0) {
