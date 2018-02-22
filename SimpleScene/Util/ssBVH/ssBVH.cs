@@ -39,13 +39,13 @@ namespace SimpleScene.Util.ssBVH {
 	}
 
 	public class ssBVH<T> {
-		public readonly ssBVHNode<T> rootBVH;
+		public readonly ssBVHNode<T> RootBVH;
 		public readonly SSBVHNodeAdaptor<T> nAda;
 		public readonly int LEAF_OBJ_MAX;
 		public int NodeCount = 0;
 		public int MaxDepth = 0;
 
-		public readonly HashSet<ssBVHNode<T>> refitNodes = new HashSet<ssBVHNode<T>>();
+		public readonly HashSet<ssBVHNode<T>> RefitNodes = new HashSet<ssBVHNode<T>>();
 
 		public delegate bool NodeTest (Boundsd box);
 
@@ -55,17 +55,17 @@ namespace SimpleScene.Util.ssBVH {
 				return;
 			}
 
-			if (hitTest(curNode.box)) {
+			if (hitTest(curNode.Bounds)) {
 				hitlist.Add(curNode);
-				_query(curNode.left, hitTest, hitlist);
-				_query(curNode.right, hitTest, hitlist);
+				_query(curNode.Left, hitTest, hitlist);
+				_query(curNode.Right, hitTest, hitlist);
 			}
 		}
 
 		// public interface to traversal..
 		public List<ssBVHNode<T>> Query (NodeTest hitTest) {
 			var hits = new List<ssBVHNode<T>>();
-			_query(rootBVH, hitTest, hits);
+			_query(RootBVH, hitTest, hits);
 			return hits;
 		}
 
@@ -87,11 +87,11 @@ namespace SimpleScene.Util.ssBVH {
 				throw new Exception("In order to use optimize, you must set LEAF_OBJ_MAX=1");
 			}
 
-			while (refitNodes.Count > 0) {
-				int maxdepth = refitNodes.Max(n => n.depth);
+			while (RefitNodes.Count > 0) {
+				int maxdepth = RefitNodes.Max(n => n.Depth);
 
-				var sweepNodes = refitNodes.Where(n => n.depth == maxdepth).ToList();
-				sweepNodes.ForEach(n => refitNodes.Remove(n));
+				var sweepNodes = RefitNodes.Where(n => n.Depth == maxdepth).ToList();
+				sweepNodes.ForEach(n => RefitNodes.Remove(n));
 
 				sweepNodes.ForEach(n => n.TryRotate(this));
 			}
@@ -100,7 +100,7 @@ namespace SimpleScene.Util.ssBVH {
 		public void AddObject (T newOb) {
 			Boundsd box = nAda.GetObjectBounds(newOb);
 			double boxSAH = ssBVHNode<T>.SA(ref box);
-			rootBVH.AddObject(nAda, newOb, ref box, boxSAH);
+			RootBVH.AddObject(nAda, newOb, ref box, boxSAH);
 		}
 
 		public void RemoveObject (T newObj) {
@@ -109,7 +109,7 @@ namespace SimpleScene.Util.ssBVH {
 		}
 
 		public int Count () {
-			return rootBVH.CountBvhNodes();
+			return RootBVH.CountBvhNodes();
 		}
 
 		/// <summary>
@@ -124,10 +124,9 @@ namespace SimpleScene.Util.ssBVH {
 			nAda = nodeAdaptor;
 
 			if (objects.Count > 0) {
-				rootBVH = new ssBVHNode<T>(this, objects);
+				RootBVH = new ssBVHNode<T>(this, objects);
 			} else {
-				rootBVH = new ssBVHNode<T>(this);
-				rootBVH.gobjects = new List<T>(); // it's a leaf, so give it an empty object list
+				RootBVH = new ssBVHNode<T>(this) {ContainedObjects = new List<T>()}; // it's a leaf, so give it an empty object list
 			}
 		}
 	}

@@ -3,7 +3,11 @@ using System.Collections.Generic;
 using UnityEngine;
 
 namespace SimpleScene {
-	public struct Shape : IEquatable<Shape> {
+	public class Shape : IEquatable<Shape> {
+		private static int _nextId = 0;
+
+		private readonly int _id = _nextId++;
+
 		public enum ShapeType {
 			Sphere,
 			Capsule
@@ -82,6 +86,10 @@ namespace SimpleScene {
 		public event PositionOrSizeChangedHandler OnPositionOrSizeChanged;
 
 		public bool Equals (Shape other) {
+			if (other == null) {
+				return false;
+			}
+
 			bool result = _shapeTypeValue == other._shapeTypeValue && _position0 == other._position0;
 
 			if (_shapeTypeValue == ShapeType.Sphere || _shapeTypeValue == ShapeType.Capsule) {
@@ -93,6 +101,16 @@ namespace SimpleScene {
 			}
 
 			return result;
+		}
+
+		override
+		public bool Equals (object o) {
+			return o is Shape && Equals((Shape) o);
+		}
+
+		override
+		public int GetHashCode () {
+			return 17 * _id;
 		}
 
 		public Boundsd Bounds {
@@ -126,7 +144,7 @@ namespace SimpleScene {
 			}
 		}
 
-		public static bool Intersects (Shape s0, Shape s1) {
+		public static bool Intersects (ref Shape s0, ref Shape s1) {
 			Func<Shape, Shape, bool> function = IntersectionDetectors[new Tuple<ShapeType, ShapeType>(s0._shapeTypeValue, s1._shapeTypeValue)];
 			return function != null && function(s0, s1);
 		}
@@ -152,7 +170,7 @@ namespace SimpleScene {
 						s1._shapeTypeValue.ToString()));
 			}
 
-			return Mathd.ClosestSegmentToSegmentSqrDistance(s0._position0, s0._position1, s1._position0, s1._position0)
+			return Mathd.ClosestSegmentToSegmentSqrDistance(s0._position0, s0._position1, s1._position0, s1._position1)
 			       < (s0._extends0 + s1._extends0) * (s0._extends0 + s1._extends0);
 		}
 
@@ -174,7 +192,9 @@ namespace SimpleScene {
 						s1._shapeTypeValue.ToString()));
 			}
 
-			return Mathd.ClosestSegmentToSegmentSqrDistance(capsule._position0, capsule._position1, sphere._position0, sphere._position0)
+			// the sphere's coordinates must be in the first two parameters because the algorithm defaults to one of them if the lines are parallel
+			// (or one is a point)
+			return Mathd.ClosestSegmentToSegmentSqrDistance(sphere._position0, sphere._position0, capsule._position0, capsule._position1)
 			       < (capsule._extends0 + sphere._extends0) * (capsule._extends0 + sphere._extends0);
 		}
 	}
