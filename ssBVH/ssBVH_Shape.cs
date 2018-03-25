@@ -18,11 +18,11 @@ namespace SimpleScene.Util.ssBVH {
 			}
 		}
 
-		public Boundsd GetObjectBounds (Shape shape) {
+		public Bounds_d GetObjectBounds (Shape shape) {
 			return shape.Bounds;
 		}
 
-		public Vector3d GetObjectPosition (Shape shape) {
+		public Vector3_d GetObjectPosition (Shape shape) {
 			return shape.Centroid;
 		}
 

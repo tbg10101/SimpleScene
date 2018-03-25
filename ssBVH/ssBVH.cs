@@ -30,8 +30,8 @@ namespace SimpleScene.Util.ssBVH {
 
 	public interface SSBVHNodeAdaptor<T> {
 		ssBVH<T> BVH { get; set; }
-		Vector3d GetObjectPosition (T obj);
-		Boundsd GetObjectBounds (T obj);
+		Vector3_d GetObjectPosition (T obj);
+		Bounds_d GetObjectBounds (T obj);
 		void MapObjectToBvhLeaf (T obj, ssBVHNode<T> leaf);
 		void UnmapObject (T obj);
 		void CheckMap (T obj);
@@ -47,7 +47,7 @@ namespace SimpleScene.Util.ssBVH {
 
 		public readonly HashSet<ssBVHNode<T>> RefitNodes = new HashSet<ssBVHNode<T>>();
 
-		public delegate bool NodeTest (Boundsd box);
+		public delegate bool NodeTest (Bounds_d box);
 
 		// internal functional traversal...
 		private static void _query (ssBVHNode<T> curNode, NodeTest hitTest, ICollection<ssBVHNode<T>> hitlist) {
@@ -69,11 +69,11 @@ namespace SimpleScene.Util.ssBVH {
 			return hits;
 		}
 
-		public List<ssBVHNode<T>> Query (Rayd ray) {
+		public List<ssBVHNode<T>> Query (Ray_d ray) {
 			return Query(ray.IntersectsBounds);
 		}
 
-		public List<ssBVHNode<T>> Query (Boundsd volume) {
+		public List<ssBVHNode<T>> Query (Bounds_d volume) {
 			return Query(box => box.Intersects(volume));
 		}
 
@@ -98,7 +98,7 @@ namespace SimpleScene.Util.ssBVH {
 		}
 
 		public void AddObject (T newOb) {
-			Boundsd box = nAda.GetObjectBounds(newOb);
+			Bounds_d box = nAda.GetObjectBounds(newOb);
 			double boxSAH = ssBVHNode<T>.SA(ref box);
 			RootBVH.AddObject(nAda, newOb, ref box, boxSAH);
 		}

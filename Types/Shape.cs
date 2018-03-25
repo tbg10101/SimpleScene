@@ -36,8 +36,8 @@ namespace SimpleScene {
 			}
 		}
 
-		private Vector3d _position0;
-		public Vector3d Position0 {
+		private Vector3_d _position0;
+		public Vector3_d Position0 {
 			get {
 				return _position0;
 			}
@@ -51,8 +51,8 @@ namespace SimpleScene {
 			}
 		}
 
-		private Vector3d _position1;
-		public Vector3d Position1 {
+		private Vector3_d _position1;
+		public Vector3_d Position1 {
 			get {
 				return _position1;
 			}
@@ -65,7 +65,6 @@ namespace SimpleScene {
 				NotifyPositionOrSizeChanged();
 			}
 		}
-
 
 		private double _extends0;
 		public double Extends0 {
@@ -81,6 +80,9 @@ namespace SimpleScene {
 				NotifyPositionOrSizeChanged();
 			}
 		}
+
+		public Vector3_d Velocity = Vector3_d.zero;
+		public Vector3 AngularVelocity = Vector3.zero;
 
 		public delegate void PositionOrSizeChangedHandler(Shape sender);
 		public event PositionOrSizeChangedHandler OnPositionOrSizeChanged;
@@ -113,22 +115,22 @@ namespace SimpleScene {
 			return 17 * _id;
 		}
 
-		public Boundsd Bounds {
+		public Bounds_d Bounds {
 			get {
-				Vector3d extendsVector = new Vector3d(_extends0);
+				Vector3_d extendsVector = new Vector3_d(_extends0);
 
 				switch (_shapeTypeValue) {
 					case ShapeType.Sphere:
-						return Boundsd.FromCenterAndExtents(_position0, extendsVector);
+						return Bounds_d.FromCenterAndExtents(_position0, extendsVector);
 					case ShapeType.Capsule:
-						return Boundsd.FromPoints(Vector3d.Min(_position0, _position1) - extendsVector, Vector3d.Max(_position0, _position1) + extendsVector);
+						return Bounds_d.FromPoints(Vector3_d.Min(_position0, _position1) - extendsVector, Vector3_d.Max(_position0, _position1) + extendsVector);
 					default:
-						return new Boundsd();
+						return new Bounds_d();
 				}
 			}
 		}
 
-		public Vector3d Centroid {
+		public Vector3_d Centroid {
 			get {
 				if (ShapeTypeValue == ShapeType.Capsule) {
 					return (_position0 + _position1) / 2.0;
@@ -158,7 +160,7 @@ namespace SimpleScene {
 						s1._shapeTypeValue.ToString()));
 			}
 
-			return Vector3d.SqrDistance(s1._position0, s0._position0) < (s0._extends0 + s1._extends0) * (s0._extends0 + s1._extends0);
+			return Vector3_d.SqrDistance(s1._position0, s0._position0) < (s0._extends0 + s1._extends0) * (s0._extends0 + s1._extends0);
 		}
 
 		private static bool CheckCapsuleIntersection (Shape s0, Shape s1) {
@@ -170,7 +172,7 @@ namespace SimpleScene {
 						s1._shapeTypeValue.ToString()));
 			}
 
-			return Mathd.ClosestSegmentToSegmentSqrDistance(s0._position0, s0._position1, s1._position0, s1._position1)
+			return Math_d.ClosestSegmentToSegmentSqrDistance(s0._position0, s0._position1, s1._position0, s1._position1)
 			       < (s0._extends0 + s1._extends0) * (s0._extends0 + s1._extends0);
 		}
 
@@ -194,7 +196,7 @@ namespace SimpleScene {
 
 			// the sphere's coordinates must be in the first two parameters because the algorithm defaults to one of them if the lines are parallel
 			// (or one is a point)
-			return Mathd.ClosestSegmentToSegmentSqrDistance(sphere._position0, sphere._position0, capsule._position0, capsule._position1)
+			return Math_d.ClosestSegmentToSegmentSqrDistance(sphere._position0, sphere._position0, capsule._position0, capsule._position1)
 			       < (capsule._extends0 + sphere._extends0) * (capsule._extends0 + sphere._extends0);
 		}
 	}

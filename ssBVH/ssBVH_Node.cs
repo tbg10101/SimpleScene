@@ -28,7 +28,7 @@ using UnityEngine;
 
 namespace SimpleScene.Util.ssBVH {
 	public class ssBVHNode<GO> {
-		public Boundsd Bounds;
+		public Bounds_d Bounds;
 
 		public ssBVHNode<GO> Parent;
 		public ssBVHNode<GO> Left;
@@ -64,8 +64,8 @@ namespace SimpleScene.Util.ssBVH {
 			}
 		}
 
-		private void ExpandVolume (Boundsd bounds) {
-			Boundsd oldBox = Bounds;
+		private void ExpandVolume (Bounds_d bounds) {
+			Bounds_d oldBox = Bounds;
 			Bounds.ExpandToFit(bounds);
 
 			if (!oldBox.Equals(Bounds) && Parent != null) {
@@ -86,7 +86,7 @@ namespace SimpleScene.Util.ssBVH {
 				throw new NotImplementedException();
 			} // TODO: fix this... we should never get called in this case...
 
-			Boundsd oldbox = Bounds;
+			Bounds_d oldbox = Bounds;
 
 			ComputeVolume(nAda);
 			if (!Bounds.Equals(oldbox)) {
@@ -97,7 +97,7 @@ namespace SimpleScene.Util.ssBVH {
 			return false;
 		}
 
-		private static double SA (Boundsd box) {
+		private static double SA (Bounds_d box) {
 			double x_size = box.max.x - box.max.x;
 			double y_size = box.max.y - box.max.y;
 			double z_size = box.max.z - box.max.z;
@@ -105,7 +105,7 @@ namespace SimpleScene.Util.ssBVH {
 			return 2.0f * ((x_size * y_size) + (x_size * z_size) + (y_size * z_size));
 		}
 
-		internal static double SA (ref Boundsd box) {
+		internal static double SA (ref Bounds_d box) {
 			double x_size = box.max.x - box.min.x;
 			double y_size = box.max.y - box.min.y;
 			double z_size = box.max.z - box.min.z;
@@ -121,14 +121,14 @@ namespace SimpleScene.Util.ssBVH {
 			return 2.0f * ((x_size * y_size) + (x_size * z_size) + (y_size * z_size));
 		}
 
-		private static Boundsd BoundsOfPair (ssBVHNode<GO> nodea, ssBVHNode<GO> nodeb) {
-			Boundsd box = nodea.Bounds;
+		private static Bounds_d BoundsOfPair (ssBVHNode<GO> nodea, ssBVHNode<GO> nodeb) {
+			Bounds_d box = nodea.Bounds;
 			box.ExpandToFit(nodeb.Bounds);
 			return box;
 		}
 
 		private double SAofList (SSBVHNodeAdaptor<GO> nAda, List<GO> list) {
-			Boundsd box = nAda.GetObjectBounds(list[0]);
+			Bounds_d box = nAda.GetObjectBounds(list[0]);
 
 			for (int i = 1; i < list.Count - 1; i++) {
 				box.ExpandToFit(nAda.GetObjectBounds(list[i]));
@@ -384,7 +384,7 @@ namespace SimpleScene.Util.ssBVH {
 			}
 		}
 
-		internal void AddObject (SSBVHNodeAdaptor<GO> nAda, GO newOb, ref Boundsd newObBox, double newObSAH) {
+		internal void AddObject (SSBVHNodeAdaptor<GO> nAda, GO newOb, ref Bounds_d newObBox, double newObSAH) {
 			AddObject(nAda, this, newOb, ref newObBox, newObSAH);
 		}
 
@@ -418,7 +418,7 @@ namespace SimpleScene.Util.ssBVH {
 			curNode.ChildRefit(nAda);
 		}
 
-		private static void AddObject (SSBVHNodeAdaptor<GO> nAda, ssBVHNode<GO> curNode, GO newOb, ref Boundsd newObBox, double newObSAH) {
+		private static void AddObject (SSBVHNodeAdaptor<GO> nAda, ssBVHNode<GO> curNode, GO newOb, ref Bounds_d newObBox, double newObSAH) {
 			// 1. first we traverse the node looking for the best leaf
 			while (curNode.ContainedObjects == null) {
 				// find the best way to add this object.. 3 options..
@@ -548,7 +548,7 @@ namespace SimpleScene.Util.ssBVH {
 				ssBVHNode<GO> right = curNode.Right;
 
 				// start with the left box
-				Boundsd newBox = left.Bounds.ExpandedToFit(right.Bounds);
+				Bounds_d newBox = left.Bounds.ExpandedToFit(right.Bounds);
 
 				// now set our box to the newly created box
 				curNode.Bounds = newBox;
